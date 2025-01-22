@@ -33,8 +33,6 @@ try:
         # Decode and process the message
         try:
             message_value = json.loads(msg.value().decode('utf-8'))
-            print(f"Received message: {message_value}")
-
             # Extract and process fields from the message
             request_id = message_value.get('request_id')
             result = message_value.get('result')
@@ -47,10 +45,5 @@ try:
         except json.JSONDecodeError as e:
             print(f"Failed to decode message: {e}")
 
-except KeyboardInterrupt:
-    print("\nConsumer interrupted. Closing...")
-finally:
-    # Ensure the consumer is closed properly
-    consumer.close()
-    print("Consumer closed.")
+
     

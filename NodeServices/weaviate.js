@@ -35,12 +35,12 @@ class WeaviateClient {
         throw new Error("Weaviate client is not initialized. Call `connect()` first.");
       }
       const collection = this.client.collections.get(className)
-      result = await collection.query.hybrid(searchQuery, {
+      const result = await collection.query.hybrid(searchQuery, {
         limit: limit , alpha:alpha
-      })
-        
+      });
+
       console.log("Weaviate Hybrid Query Result:", JSON.stringify(result, null, 2));
-      return result;
+      return result.objects[0]['properties'];
     } catch (error) {
       console.error("Error performing hybrid query:", error.message);
       throw error;
@@ -50,12 +50,9 @@ class WeaviateClient {
   // Insert data into Weaviate
   async insertData(className, data) {
     try {
-      const result = await this.client.data
-        .creator()
-        .withClassName(className)
-        .withProperties(data)
-        .do();
 
+      const collection = this.client.collections.get(className)
+      const result = await collection.data.insert(data)
       console.log("Data Inserted Successfully:", JSON.stringify(result, null, 2));
       return result;
     } catch (error) {

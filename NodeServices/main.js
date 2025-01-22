@@ -7,8 +7,6 @@ const KafkaConsumer = require("./consumer");
 
 (async () => {
   // Initialize clients
-
-
   try {
 
     const mongoClient = new MongoDBClient(process.env.MONGO_URI);
@@ -23,19 +21,31 @@ const KafkaConsumer = require("./consumer");
   
     // Consume messages from Kafka
     await consumer.subscribe("data_requests", async (message) => {
-      const { operation, class: className, data, query, request_id } = message;
+      const { operation, class: className, data, query, request_id, source} = message;
     // Extract and validate the `hybrid` query
-    const { hybrid, limit } = query;
-    if (!hybrid || !hybrid.query || typeof hybrid.alpha !== "number") {
-      throw new Error("Invalid 'hybrid' query structure");
-    }
       try {
         let result;
-        if (operation === "query") {
-          result = await weaviateClient.hybridQuery(className, hybrid.query , hybrid.alpha, limit);
-        } else if (operation === "insert") {
-          result = await weaviateClient.insertData(className, data);
+
+        if (source === "weavite")
+        {
+          if (operation === "query") {
+            const { hybrid, limit } = query;
+            if (!hybrid || !hybrid.query || typeof hybrid.alpha !== "number") {
+              throw new Error("Invalid 'hybrid' query structure");
+            }
+            result = await weaviateClient.hybridQuery(className, hybrid.query , hybrid.alpha, limit);
+          } else if (operation === "insert") {
+            result = await weaviateClient.insertData(className, data);
+          }
         }
+        else if(source === "mongo"){
+          if (operation === "query") {
+            result = await mongoClient.queryData(className,query)
+          } else if (operation === "insert") {
+            result = await mongoClient.insertData(className, data);
+          }
+        }
+        
         // Send response back to Kafka
         await producer.sendMessage("data_responses", { request_id, result });
       } catch (error) {
@@ -43,6 +53,7 @@ const KafkaConsumer = require("./consumer");
         await producer.sendMessage("data_responses", { request_id, error: error.message });
       }
     });
+
     console.log("Consumers are running...");
 
     // Handle process termination signals for graceful shutdown
