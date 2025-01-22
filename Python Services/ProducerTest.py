@@ -9,16 +9,9 @@ def send_insertion_request(data):
     producer.flush()
     print(f"Sent insertion request: {data}")
 
-def send_data_request(request_id, query_params):
+def send_data_request(request):
     producer = Producer({'bootstrap.servers': 'localhost:9092'})
-    topic = 'data_request'
-
-    request = {
-        "request_id": request_id,
-        "source": "mongo",  # Could be "mongo" or "weaviate"
-        "collection": "users",  # Collection (MongoDB) or class (Weaviate)
-        "query": query_params  # Query parameters for MongoDB or Weaviate
-    }
+    topic = 'data_requests'
 
 
     producer.produce(topic, value=json.dumps(request))
@@ -28,14 +21,24 @@ def send_data_request(request_id, query_params):
 
 
 # Example usage
-data_to_insert = {
-    "collection": "users",
-    "data": {
-        "name": "Jenn Test 2",
-        "email": "johndoe@exampletest.com",
-        "age": 34
+query_request = {
+    "request_id": "req-001",
+    "operation": "query",
+    "class": "Episodic_memory",
+    "query": {
+        "hybrid": {
+            "query": "Talking about Python",
+            "alpha": 0.5
+        },
+        "limit": 1
     }
 }
-#send_insertion_request(data_to_insert)
-send_data_request("req-123", {"filter": {"age": {"$gte": 25}}, "limit": 10})
+
+# Validate the query
+if not query_request["query"]["hybrid"]["query"]:
+    raise ValueError("The 'query' field in 'hybrid' is required and cannot be empty.")
+if not isinstance(query_request["query"]["hybrid"]["alpha"], (float, int)):
+    raise ValueError("The 'alpha' field in 'hybrid' must be a valid float.")
+
+send_data_request(query_request)
 
