@@ -1,6 +1,8 @@
 #add node modules to git ignore
 node_modules/
 
+.vscode/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
