@@ -1,13 +1,15 @@
 import utilitis as helper
-import os
 from langchain_core.messages import HumanMessage, SystemMessage
 from OpenAIClient import openAIClient
-from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 import uuid
 from utilitis import send_request_and_wait_for_response, send_insertion_request
 import pyttsx3
+from discordBot import discordBot
+import asyncio
+
+
 
 
 class coreAi:
@@ -19,13 +21,17 @@ class coreAi:
     summary = ""
     llm = None    
     reflect = None
-    def __init__(self, conversation,what_worked,what_to_avoid,openAIKey):
+    discord=None
+    def __init__(self, conversation,what_worked,what_to_avoid,openAIKey,discordKey):
         self.conversation = conversation
         self.what_worked = what_worked
         self.what_to_avoid = what_to_avoid
         self.llm = openAIClient(openAiKey= openAIKey)
+        self.discord = discordBot()
         self.reflect = self.setReflection()       
-    
+        
+
+
     def setReflection(self):
             query = {
                  "class":"memories",
@@ -143,49 +149,50 @@ class coreAi:
 
         return SystemMessage(content=episodic_prompt)
     
-    def start(self):
-        while True:
-            # Get User's Message
-            user_input = input("\nUser: ")
-            user_message = HumanMessage(content=user_input)
 
-            # Generate new system prompt
-            system_prompt = self.episodic_system_prompt(user_input)
+    def start_with_await(self,tts,discordKey = None):
+        self.discord.on_ready(self.on_ready)
+        self.discord.on_message(self.on_message)
+        self.discord.start(discordKey)
 
-            # Reconstruct messages list with new system prompt first
-            self.messages = [
-                system_prompt,  # New system prompt always first
-                *[msg for msg in self.messages if not isinstance(msg, SystemMessage)]  # Old messages except system
-            ]
 
-            if user_input.lower() == "exit":
-                self.add_episodic_memory(self.messages)
-                print("\n == Conversation Stored in Episodic Memory ==")
-                self.personality_memory_updated(self.summary)
-                print("\n== Personality Memory Updated ==")
-                break
-            if user_input.lower() == "exit_quiet":
-                print("\n == Conversation Exited ==")
-                break
+    def ai_respond_routine(self,tts,user_input):
+        print("start ai routine")            
+        user_message = HumanMessage(content=user_input)
+        # Generate new system prompt
+        print("episodic_system_prompt")            
+        system_prompt = self.episodic_system_prompt(user_input)
+        # Reconstruct messages list with new system prompt first
+        self.messages = [
+            system_prompt,  # New system prompt always first
+            *[msg for msg in self.messages if not isinstance(msg, SystemMessage)]  # Old messages except system
+        ]
+        
+        print("\n == Conversation Stored in Episodic Memory ==")
+        #self.personality_memory_updated(self.summary)
+        print("\n== Personality Memory Updated ==")
 
-            # Add current user message
-            self.messages.append(user_message)
-
-            # Pass Entire Message Sequence to LLM to Generate Response
-            response = self.invoke(self.messages)
+        # Pass Entire Message Sequence to LLM to Generate Response
+        response = self.invoke([*self.messages, user_message])
+        if tts:
             self.speak_text(response.content)
-            # Add AI's Response to Message List
-            self.messages.append(response)
+        # Add AI's Response to Message List
+            
+        self.messages.extend([user_message, response])
+        self.add_episodic_memory(self.messages)
 
-    
+        
+        return response.content
+
+
+
     def speak_text(self,text):
         """
-        Generate and play speech for the given text.
+         Generate and play speech for the given text.
         """
         try:
             # Initialize the TTS engine
             engine = pyttsx3.init()
-
             # Set properties (optional)
             engine.setProperty('rate', 150)  # Speed of speech (default: 200)
             engine.setProperty('volume', 1.0)  # Volume level (0.0 to 1.0)
@@ -200,7 +207,6 @@ class coreAi:
 
     def personality_memory_updated(self,summary):
         # Load Existing Procedural Memory Instructions
-            
             query = {
                  "class":"memories",
                  "query":{"type":"personality_memory"},
@@ -272,3 +278,38 @@ class coreAi:
                     }
                 }
             send_insertion_request(query_request_mongo)
+
+
+    ## Discord bot functions
+    async def send_message(self,message,user_message:str):
+        if not user_message:
+            print('Message was empty because intents were not enable')
+            return
+        is_private = False
+        is_channel = False
+        if user_message[0] == '?':
+            is_private = True
+            user_message = user_message[1:]
+        elif user_message[0:7] == "/jeanne":
+            is_channel = True
+            user_message = user_message[7:]
+        if is_private or is_channel:
+            try:
+                response: str = self.ai_respond_routine(False,user_message)
+                await message.author.send(response) if is_private else await message.channel.send(response)
+            except Exception as e:
+                print(e)
+
+    async def on_ready(self) -> None:
+        print(f'{self.discord.client.user} is now running')
+
+
+    async def on_message(self,message):
+        if message.author == self.discord.client.user:
+            return 
+        username: str = str(message.author)
+        user_message: str = message.content
+        channel: str = str(message.channel)
+        
+        print(f'[{channel}] {username}: "{user_message}"')
+        await self.send_message(message,user_message)

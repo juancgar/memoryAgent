@@ -9,6 +9,14 @@ dotenv_path = os.path.join(os.path.dirname(__file__), '..', '.env')
 
 # Load the .env file
 load_dotenv(dotenv_path)
-jenne_ai = coreAi([],set(),set(),os.getenv('OPEN_API_KEY'))
+openAIToken = os.getenv('OPEN_API_KEY')
+discordToken = os.getenv('DISCORD_TOKEN')
 
-jenne_ai.start()
+
+
+jenne_ai = coreAi([],set(),set(),openAIToken,discordToken)
+jenne_ai.start_with_await(False,discordToken)
+#jenne_ai.start(False,True)
+#print(discordToken)
+
+
