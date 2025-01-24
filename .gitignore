@@ -1,6 +1,6 @@
 #add node modules to git ignore
 node_modules/
-
+client.properties
 .vscode/
 
 # Byte-compiled / optimized / DLL files

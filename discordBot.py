@@ -1,5 +1,4 @@
-from discord import Intents, Client, Message
-
+from discord import Client, Intents, Message
 class discordBot:
     def __init__(self):
         print("Initializing discordBot...")

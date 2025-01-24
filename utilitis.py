@@ -8,16 +8,28 @@ BROKER = "localhost:9092"
 DATA_REQUESTS_TOPIC = "data_requests"
 DATA_RESPONSES_TOPIC = "data_responses"
 
+def read_config():
+  # reads the client configuration from client.properties
+  # and returns it as a key-value map
+  config = {}
+  with open("client.properties") as fh:
+    for line in fh:
+      line = line.strip()
+      if len(line) != 0 and line[0] != "#":
+        parameter, value = line.strip().split('=', 1)
+        config[parameter] = value.strip()
+  return config
+
 # Initialize Kafka Producer
-producer = Producer({"bootstrap.servers": BROKER})
+producer = Producer(read_config())
+config = read_config()
+config["group.id"] = "python-group-1"
+config["auto.offset.reset"] = "earliest"
 
 # Initialize Kafka Consumer
-consumer_config = {
-    "bootstrap.servers": BROKER,
-    "group.id": f"python-response-consumer-{uuid.uuid4()}",
-    "auto.offset.reset": "earliest",
-}
-consumer = Consumer(consumer_config)
+consumer = Consumer(config)
+
+
 
 def send_request_and_wait_for_response(query_data, timeout=30):
     """

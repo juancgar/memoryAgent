@@ -6,8 +6,8 @@ from langchain_core.output_parsers import JsonOutputParser
 import uuid
 from utilitis import send_request_and_wait_for_response, send_insertion_request
 import pyttsx3
-from discordBot import discordBot
 import asyncio
+from discordBot import discordBot
 
 
 
@@ -140,8 +140,7 @@ class coreAi:
 
         try to keep short conversations less than 25 words
         and not used a lot of emojis
-
-        Try to entretain the viewer's to the best of your abilities.
+        
         You recall similar conversations with the user, here are the details:
         
         {prompt}
