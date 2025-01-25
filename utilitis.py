@@ -70,7 +70,7 @@ def send_request_and_wait_for_response(query_data, timeout=30):
 
     
 def send_insertion_request(data):
-    producer = Producer({'bootstrap.servers': 'localhost:9092'})
+    producer = Producer(read_config())
     topic = 'data_requests'
 
     producer.produce(topic, value=json.dumps(data))
